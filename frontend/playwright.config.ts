@@ -8,6 +8,8 @@ export default defineConfig({
   expect: {
     timeout: 10_000,
   },
+  // Tests share one user and board in the database, so run them one at a time
+  workers: 1,
   use: {
     baseURL: process.env.BASE_URL ?? "http://localhost:8000",
     trace: "retain-on-failure",

@@ -94,9 +94,10 @@ Success criteria: all backend tests pass; board changes persist in SQLite.
 
 ## Part 7: Frontend + Backend
 
-- [ ] `src/lib/api.ts`: `fetchBoard`, `saveBoard`
-- [ ] `KanbanBoard` loads the board from the API on mount and saves after each change (rename, add, edit, delete, move)
-- [ ] Simple loading state and visible error message if a save fails
+- [x] `src/lib/api.ts`: `fetchBoard`, `saveBoard`
+- [x] `KanbanBoard` loads the board from the API on mount and saves after each change (rename, add, edit, delete, move); saves are queued so they reach the server in order
+- [x] Simple loading state and visible error message if a save fails
+- [x] Verified: 23 unit tests, 12 e2e tests (incl. persistence after reload), board survives container stop/start in the real UI
 
 Tests:
 - Unit: board renders data from mocked API; each action triggers a save with the correct payload
