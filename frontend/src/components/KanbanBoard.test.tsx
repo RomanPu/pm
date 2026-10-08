@@ -5,10 +5,17 @@ import { initialData, type BoardData } from "@/lib/kanban";
 
 const getFirstColumn = () => screen.getAllByTestId(/column-/i)[0];
 
-// Mock API: GET /api/board returns initialData, PUT records the saved board
-const mockApi = ({ saveOk = true, loadOk = true } = {}) => {
+// Mock API: GET /api/board returns initialData, PUT records the saved board,
+// POST /api/chat returns chatBoard as an AI update
+const mockApi = ({ saveOk = true, loadOk = true, chatBoard = initialData } = {}) => {
   const saved: BoardData[] = [];
   const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+    if (url === "/api/chat") {
+      return {
+        ok: true,
+        json: async () => ({ reply: "Done.", board_updated: true, board: chatBoard }),
+      };
+    }
     if (init?.method === "PUT") {
       saved.push(JSON.parse(init.body as string));
       return { ok: saveOk, json: async () => ({}) };
@@ -137,6 +144,22 @@ describe("KanbanBoard", () => {
     await renderBoard();
     await userEvent.click(screen.getByRole("button", { name: "Delete Align roadmap themes" }));
     expect(await screen.findByRole("alert")).toHaveTextContent(/could not save your changes/i);
+  });
+
+  it("shows AI board changes without saving them again", async () => {
+    const chatBoard = structuredClone(initialData);
+    chatBoard.cards["card-ai"] = { id: "card-ai", title: "From the AI", details: "" };
+    chatBoard.columns[3].cardIds.push("card-ai");
+    const api = mockApi({ chatBoard });
+    await renderBoard();
+
+    await userEvent.click(screen.getByRole("button", { name: /ask ai/i }));
+    await userEvent.type(screen.getByLabelText("Message"), "Add a card to Review");
+    await userEvent.click(screen.getByRole("button", { name: /send/i }));
+
+    const review = screen.getByTestId("column-col-review");
+    expect(await within(review).findByText("From the AI")).toBeInTheDocument();
+    expect(api.saved).toHaveLength(0);
   });
 
   it("sends saves in order", async () => {

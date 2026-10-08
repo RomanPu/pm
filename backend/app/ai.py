@@ -7,7 +7,7 @@ from google import genai
 from google.genai import types
 from pydantic import BaseModel, Field
 
-MODEL = "gemini-3.5-flash"
+MODEL = "gemini-3.8-flash"
 
 SYSTEM_PROMPT = """You are the assistant inside a Kanban project management app.
 You help the user manage their board: answer questions about it, and create, edit, move, or delete cards when asked.

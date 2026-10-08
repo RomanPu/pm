@@ -7,7 +7,7 @@ Status legend: `[ ]` todo, `[x]` done. Each part ends with user review before mo
 - One Docker container. Multi-stage build: Node stage runs `next build` with `output: "export"`; Python stage (uv) runs FastAPI with uvicorn and serves the exported static site at `/` and the API under `/api/*`.
 - Container listens on port 8000. App is at http://localhost:8000.
 - SQLite database file at `/app/data/app.db`, mounted from a Docker volume so data survives restarts. Created on startup if missing.
-- AI: Google Gemini API, most suitable free-tier Flash model (planned `gemini-3.8-flash`; free-tier access confirmed by the live test in Part 8), key from `GEMINI_API_KEY` in the root `.env`, passed to the container with `--env-file .env`. Never committed.
+- AI: Google Gemini API, model `gemini-3.8-flash` (paid tier; the free tier allows only 20 requests/day per model), key from `GEMINI_API_KEY` in the root `.env`, passed to the container with `--env-file .env`. Never committed.
 - Auth: hardcoded `user` / `password`. Backend sets an httponly session cookie; `/api/*` routes (except login) require it.
 
 ## Part 1: Plan
@@ -129,16 +129,18 @@ Success criteria: a real Gemini call succeeds from inside the container.
 Tests:
 - Unit (AI mocked): reply only leaves the board unchanged; operations are applied and saved; an invalid operation (unknown id) is rejected and nothing is saved; AI failures return 503; each operation type, positions, untouched cards preserved
 - Live (`-m live`): question changes nothing; add a card and move another; move a card referenced through conversation history
-- [x] Verified: 48 unit tests; 4 live tests pass; real `POST /api/chat` adds a card and moves another with all other cards intact. The Gemini project is now on the paid tier (prepaid credits), so the free-tier limits above no longer apply
+- [x] Verified: 48 unit tests; 4 live tests pass; real `POST /api/chat` adds a card and moves another with all other cards intact. The Gemini project is now on the paid tier (prepaid credits), so the free-tier limits above no longer apply; switched back to `gemini-3.8-flash` and the 4 live tests pass on it
 
 Success criteria: the AI can create, edit, and move one or more cards through structured outputs, verified by tests.
 
 ## Part 10: AI chat sidebar
 
-- [ ] Sidebar component (collapsible) with message list, input, and send button, using the color scheme
-- [ ] Conversation history held in frontend state and sent with each request
-- [ ] When `board_updated` is true, refresh the board from the response
-- [ ] Loading indicator while waiting; error message on failure
+- [x] Sidebar component (collapsible) with message list, input, and send button, using the color scheme. Starts closed ("Ask AI" button); overlays the board below 1536px wide and docks beside it on wider screens (docking at 1280px squeezed cards to ~117px wide)
+- [x] Conversation history held in frontend state and sent with each request
+- [x] When `board_updated` is true, refresh the board from the response
+- [x] Loading indicator while waiting; error message on failure
+- [x] Card buttons moved under the card text and the drag overlay sized to the dragged card, so cards work in narrow columns
+- [x] Verified: 31 unit tests, 15 e2e tests (chat with intercepted AI), 48 backend tests; manual live chat in the browser added a card, moved another, then used history to move "the card you just created", and the changes persisted after reload
 
 Tests:
 - Unit: sends message, renders reply, updates board when `board_updated`
