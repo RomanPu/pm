@@ -68,20 +68,21 @@ Success criteria: board is reachable only after signing in; logout works.
 
 ## Part 5: Database modeling
 
-- [ ] Propose schema in `docs/DATABASE.md` with an example in `docs/schema.json`
-- [ ] Approach (JSON document approved in Part 1): tables `users (id, username unique, password_hash, created_at)` and `boards (id, user_id unique -> users.id, data JSON text, updated_at)`. The board is stored as one JSON document matching the frontend `BoardData` shape. One board per user for the MVP; `user_id` on boards keeps the door open for multiple users.
-- [ ] Seed: user `user` and a default board (current `initialData`) created when the DB is first initialized
-- [ ] User sign-off on the schema
+- [x] Propose schema in `docs/DATABASE.md` with an example in `docs/schema.json`
+- [x] Approach (JSON document approved in Part 1): tables `users (id, username unique, password_hash, created_at)` and `boards (id, user_id unique -> users.id, data JSON text, updated_at)`. The board is stored as one JSON document matching the frontend `BoardData` shape. One board per user for the MVP; `user_id` on boards keeps the door open for multiple users.
+- [x] Seed: user `user` and a default board (current `initialData`) created when the DB is first initialized
+- [x] User sign-off on the schema (sessions in memory, one board per user, chat history not stored)
 
 Success criteria: user approves the documented schema.
 
 ## Part 6: Backend
 
-- [ ] `app/db.py`: create the SQLite DB and tables if missing, seed default user and board (stdlib `sqlite3`, no ORM)
-- [ ] Pydantic models for `BoardData`, `Column`, `Card`
-- [ ] `GET /api/board` returns the signed-in user's board
-- [ ] `PUT /api/board` validates and replaces the signed-in user's board
-- [ ] Login checks credentials against the `users` table
+- [x] `app/db.py`: create the SQLite DB and tables if missing, seed default user and board (stdlib `sqlite3`, no ORM)
+- [x] Pydantic models for `BoardData`, `Column`, `Card`
+- [x] `GET /api/board` returns the signed-in user's board
+- [x] `PUT /api/board` validates and replaces the signed-in user's board
+- [x] Login checks credentials against the `users` table
+- [x] Verified: 24 backend tests in the container; manual PUT survives `stop.ps1` + `start.ps1` (Docker volume); 10 e2e tests still pass
 
 Tests (pytest, temp DB per test):
 - DB created from scratch when the file does not exist
