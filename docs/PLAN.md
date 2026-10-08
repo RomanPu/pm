@@ -119,14 +119,17 @@ Success criteria: a real Gemini call succeeds from inside the container.
 
 ## Part 9: AI with board context and structured outputs
 
-- [ ] `POST /api/chat` takes `{ message, history: [{role, content}] }`
-- [ ] Backend sends a system prompt, the current board JSON, the history, and the user message
-- [ ] Structured output schema: `{ reply: string, board: BoardData | null }`. If `board` is present, validate it and save it as the user's board
-- [ ] Response: `{ reply, board_updated: bool, board }`
+- [x] `POST /api/chat` takes `{ message, history: [{role, content}] }`
+- [x] Backend sends a system prompt, the current board JSON, the history, and the user message
+- [x] Structured output schema: `{ reply: string, operations: Operation[] }` where each operation is create / update / move / delete card or rename_column. The backend applies them to the stored board, validates the result, and saves it. Changed from the original "AI returns the whole board" design: in testing the AI occasionally dropped untouched cards when rewriting the full board (silent data loss). With operations, cards the AI does not mention cannot be lost, and deletes are explicit
+- [x] Response: `{ reply, board_updated: bool, board }`
+- [x] AI errors (overload 503, rate limit 429, unparseable output) return 503 with a clear message; the board is not changed
+- [x] Model switched to `gemini-3.5-flash`: `gemini-3.8-flash` free tier allows only 20 requests/day. `gemini-3.5-flash` free tier is 5 requests/minute (daily cap not published; check AI Studio)
 
 Tests:
-- Unit (AI mocked): reply only leaves the board unchanged; reply plus board saves it; invalid board from the AI is rejected and not saved
-- Live (skippable): "Add a card called Test to Backlog" results in a board containing that card
+- Unit (AI mocked): reply only leaves the board unchanged; operations are applied and saved; an invalid operation (unknown id) is rejected and nothing is saved; AI failures return 503; each operation type, positions, untouched cards preserved
+- Live (`-m live`): question changes nothing; add a card and move another; move a card referenced through conversation history
+- [x] Verified: 48 unit tests; 4 live tests pass (when run within the 5/minute limit)
 
 Success criteria: the AI can create, edit, and move one or more cards through structured outputs, verified by tests.
 
