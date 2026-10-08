@@ -107,9 +107,10 @@ Success criteria: the Kanban board is fully persistent per user.
 
 ## Part 8: AI connectivity
 
-- [ ] Add the Gemini SDK (`google-genai`) to the backend
-- [ ] `app/ai.py`: small client wrapper reading `GEMINI_API_KEY` and the model name
-- [ ] `POST /api/ai/test` (or a pytest-only check) sends "What is 2+2?" and returns the answer
+- [x] Add the Gemini SDK (`google-genai`) to the backend
+- [x] `app/ai.py`: small client wrapper reading `GEMINI_API_KEY` and the model name
+- [x] Pytest-only check (no extra route) sends "What is 2+2?" and checks the answer
+- [x] Verified: `docker exec pm-app uv run pytest -m live` passes with `gemini-3.8-flash`; 5/5 direct calls returned "4". One earlier call got a temporary 503 (model overloaded), so Part 9 must return a clear error to the user when the AI call fails
 
 Tests:
 - Live connectivity test asks "2+2" and asserts "4" in the reply (marked so it can be skipped without a key)
