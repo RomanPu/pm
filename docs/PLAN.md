@@ -129,7 +129,7 @@ Success criteria: a real Gemini call succeeds from inside the container.
 Tests:
 - Unit (AI mocked): reply only leaves the board unchanged; operations are applied and saved; an invalid operation (unknown id) is rejected and nothing is saved; AI failures return 503; each operation type, positions, untouched cards preserved
 - Live (`-m live`): question changes nothing; add a card and move another; move a card referenced through conversation history
-- [x] Verified: 48 unit tests; 4 live tests pass (when run within the 5/minute limit)
+- [x] Verified: 48 unit tests; 4 live tests pass; real `POST /api/chat` adds a card and moves another with all other cards intact. The Gemini project is now on the paid tier (prepaid credits), so the free-tier limits above no longer apply
 
 Success criteria: the AI can create, edit, and move one or more cards through structured outputs, verified by tests.
 
