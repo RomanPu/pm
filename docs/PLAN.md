@@ -1,37 +1,142 @@
-# High level steps for project
+# Project Plan
 
-Part 1: Plan
+Status legend: `[ ]` todo, `[x]` done. Each part ends with user review before moving on.
 
-Enrich this document to plan out each of these parts in detail, with substeps listed out as a checklist to be checked off by the agent, and with tests and success critieria for each. Also create an AGENTS.md file inside the frontend directory that describes the existing code there. Ensure the user checks and approves the plan.
+## Architecture summary
 
-Part 2: Scaffolding
+- One Docker container. Multi-stage build: Node stage runs `next build` with `output: "export"`; Python stage (uv) runs FastAPI with uvicorn and serves the exported static site at `/` and the API under `/api/*`.
+- Container listens on port 8000. App is at http://localhost:8000.
+- SQLite database file at `/app/data/app.db`, mounted from a Docker volume so data survives restarts. Created on startup if missing.
+- AI: Google Gemini API, most suitable free-tier Flash model (planned `gemini-3.8-flash`; free-tier access confirmed by the live test in Part 8), key from `GEMINI_API_KEY` in the root `.env`, passed to the container with `--env-file .env`. Never committed.
+- Auth: hardcoded `user` / `password`. Backend sets an httponly session cookie; `/api/*` routes (except login) require it.
 
-Set up the Docker infrastructure, the backend in backend/ with FastAPI, and write the start and stop scripts in the scripts/ directory. This should serve example static HTML to confirm that a 'hello world' example works running locally and also make an API call.
+## Part 1: Plan
 
-Part 3: Add in Frontend
+- [x] Read AGENTS.md, docs, and existing frontend code
+- [x] Create `frontend/AGENTS.md` describing the existing frontend
+- [x] Enrich this plan with substeps, tests, and success criteria
+- [x] User reviews and approves this plan
 
-Now update so that the frontend is statically built and served, so that the app has the demo Kanban board displayed at /. Comprehensive unit and integration tests.
+Success criteria: user approval.
 
-Part 4: Add in a fake user sign in experience
+## Part 2: Scaffolding
 
-Now update so that on first hitting /, you need to log in with dummy credentials ("user", "password") in order to see the Kanban, and you can log out. Comprehensive tests.
+- [x] `backend/`: uv project (`pyproject.toml`, `uv.lock`), `app/main.py` with FastAPI app
+- [x] `GET /api/health` returns `{"status": "ok"}`
+- [x] Serve a placeholder `static/index.html` ("hello world") at `/` that calls `/api/health` and shows the result
+- [x] `Dockerfile` at project root (Python base image + uv, `uv sync --frozen`, uvicorn on 0.0.0.0:8000)
+- [x] `.dockerignore` (node_modules, .next, out, .env, .git, data)
+- [x] `scripts/start.ps1`, `scripts/stop.ps1` (PC); `scripts/start.sh`, `scripts/stop.sh` (Mac/Linux): build image, run container detached with `--env-file .env`, port 8000, data volume; stop removes the container
+- [x] pytest set up in backend with a test for `/api/health`
+- [x] Update `backend/AGENTS.md` and `scripts/AGENTS.md`
+- [x] Verify in Docker: `start.ps1` builds and runs the container, `uv run pytest` passes inside it, hello world page shows API status `ok`, `stop.ps1` removes the container
 
-Part 5: Database modeling
+Tests:
+- `uv run pytest` passes (run inside the container)
+- Manual: `scripts/start.ps1`, open http://localhost:8000, see hello world plus the API response; `scripts/stop.ps1` stops it
 
-Now propose a database schema for the Kanban, saving it as JSON. Document the database approach in docs/ and get user sign off.
+Success criteria: one command starts the container and the page plus API call work in the browser; one command stops it.
 
-Part 6: Backend
+## Part 3: Add in Frontend
 
-Now add API routes to allow the backend to read and change the Kanban for a given user; test this thoroughly with backend unit tests. The database should be created if it doesn't exist.
+- [x] Set `output: "export"` in `next.config.ts`; confirm `npm run build` produces `frontend/out/`
+- [x] Dockerfile gets a Node build stage; copy `out/` into the Python image; FastAPI serves it at `/` (replacing the placeholder)
+- [x] Add card editing (title and details) - a business requirement the demo lacks
+- [x] Unit tests: `moveCard` edge cases, rename, add, edit, delete
+- [x] Point Playwright `baseURL` at the container (`BASE_URL=http://localhost:8000`) for integration runs, keep dev server option for local work
+- [x] Verified: 15 unit tests, 6 e2e tests against the container, 2 backend tests in the container, tsc and eslint clean
 
-Part 7: Frontend + Backend
+Tests:
+- `npm run test:unit` passes
+- `npm run test:e2e` passes against the running container (load board, add, edit, delete, drag between columns, rename column)
 
-Now have the frontend actually use the backend API, so that the app is a proper persistent Kanban board. Test very throughly.
+Success criteria: demo Kanban board served by FastAPI from the container at `/`, all tests green.
 
-Part 8: AI connectivity
+## Part 4: Fake user sign in
 
-Now allow the backend to make an AI call via OpenRouter. Test connectivity with a simple "2+2" test and ensure the AI call is working.
+- [x] `POST /api/login` checks `user` / `password`, sets httponly session cookie; `POST /api/logout` clears it; `GET /api/me` returns the user or 401
+- [x] Frontend: on load call `/api/me`; show a login form if 401, otherwise the board; logout button in the header
+- [x] Wrong credentials show an error message
+- [x] Verified: 8 backend tests, 20 unit tests, 10 e2e tests against the container (e2e now always targets the container, since the dev server has no backend)
 
-Part 9: Now extend the backend call so that it always calls the AI with the JSON of the Kanban board, plus the user's question (and conversation history). The AI should respond with Structured Outputs that includes the response to the user and optionaly an update to the Kanban. Test thoroughly.
+Tests:
+- Backend: login success/failure, `/api/me` with and without cookie, logout
+- Unit: login form renders, submits, shows error
+- E2E: unauthenticated visit shows login; bad password errors; good login shows board; logout returns to login; reload stays signed in
 
-Part 10: Now add a beautiful sidebar widget to the UI supporting full AI chat, and allowing the LLM (as it determines) to update the Kanban based on its Structured Outputs. If the AI updates the Kanban, then the UI should refresh automatically.
+Success criteria: board is reachable only after signing in; logout works.
+
+## Part 5: Database modeling
+
+- [ ] Propose schema in `docs/DATABASE.md` with an example in `docs/schema.json`
+- [ ] Approach (JSON document approved in Part 1): tables `users (id, username unique, password_hash, created_at)` and `boards (id, user_id unique -> users.id, data JSON text, updated_at)`. The board is stored as one JSON document matching the frontend `BoardData` shape. One board per user for the MVP; `user_id` on boards keeps the door open for multiple users.
+- [ ] Seed: user `user` and a default board (current `initialData`) created when the DB is first initialized
+- [ ] User sign-off on the schema
+
+Success criteria: user approves the documented schema.
+
+## Part 6: Backend
+
+- [ ] `app/db.py`: create the SQLite DB and tables if missing, seed default user and board (stdlib `sqlite3`, no ORM)
+- [ ] Pydantic models for `BoardData`, `Column`, `Card`
+- [ ] `GET /api/board` returns the signed-in user's board
+- [ ] `PUT /api/board` validates and replaces the signed-in user's board
+- [ ] Login checks credentials against the `users` table
+
+Tests (pytest, temp DB per test):
+- DB created from scratch when the file does not exist
+- Get board returns seeded data; put then get round-trips
+- Invalid payload rejected with 422; unauthenticated requests get 401
+- Data persists across app restarts (same DB file)
+
+Success criteria: all backend tests pass; board changes persist in SQLite.
+
+## Part 7: Frontend + Backend
+
+- [ ] `src/lib/api.ts`: `fetchBoard`, `saveBoard`
+- [ ] `KanbanBoard` loads the board from the API on mount and saves after each change (rename, add, edit, delete, move)
+- [ ] Simple loading state and visible error message if a save fails
+
+Tests:
+- Unit: board renders data from mocked API; each action triggers a save with the correct payload
+- E2E against the container: make changes, reload, changes persist; restart the container, changes still persist
+
+Success criteria: the Kanban board is fully persistent per user.
+
+## Part 8: AI connectivity
+
+- [ ] Add the Gemini SDK (`google-genai`) to the backend
+- [ ] `app/ai.py`: small client wrapper reading `GEMINI_API_KEY` and the model name
+- [ ] `POST /api/ai/test` (or a pytest-only check) sends "What is 2+2?" and returns the answer
+
+Tests:
+- Live connectivity test asks "2+2" and asserts "4" in the reply (marked so it can be skipped without a key)
+
+Success criteria: a real Gemini call succeeds from inside the container.
+
+## Part 9: AI with board context and structured outputs
+
+- [ ] `POST /api/chat` takes `{ message, history: [{role, content}] }`
+- [ ] Backend sends a system prompt, the current board JSON, the history, and the user message
+- [ ] Structured output schema: `{ reply: string, board: BoardData | null }`. If `board` is present, validate it and save it as the user's board
+- [ ] Response: `{ reply, board_updated: bool, board }`
+
+Tests:
+- Unit (AI mocked): reply only leaves the board unchanged; reply plus board saves it; invalid board from the AI is rejected and not saved
+- Live (skippable): "Add a card called Test to Backlog" results in a board containing that card
+
+Success criteria: the AI can create, edit, and move one or more cards through structured outputs, verified by tests.
+
+## Part 10: AI chat sidebar
+
+- [ ] Sidebar component (collapsible) with message list, input, and send button, using the color scheme
+- [ ] Conversation history held in frontend state and sent with each request
+- [ ] When `board_updated` is true, refresh the board from the response
+- [ ] Loading indicator while waiting; error message on failure
+
+Tests:
+- Unit: sends message, renders reply, updates board when `board_updated`
+- E2E (AI mocked via route interception): chat round trip and board refresh
+- Manual: live chat asks the AI to add and move cards and the board updates
+
+Success criteria: full AI chat in the sidebar; AI changes appear on the board without a reload.
